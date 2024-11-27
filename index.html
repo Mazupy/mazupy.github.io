@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Wordle Helper</title>
+        <style>
+            * {
+                font-family: monospace;
+                font-size: large;
+            }
+
+            body {
+                background-color: #1c1b22;
+                color: lightgray;
+            }
+
+            input[type=text] {
+                width: 80%;
+                background-color: inherit;
+                color: inherit;
+            }
+
+            input[type=checkbox] {
+                margin-top: 4px;
+                margin-bottom: 6px;
+            }
+
+            button {
+                border-radius: 3px;
+                border-color: transparent;
+                border-width: 1px;
+                box-shadow: 0 0 0 1px #8f8f9d;
+                background-color: #29282e;
+
+                &.static {
+                    margin-bottom: 8px;
+                    color: inherit;
+                }
+
+                &.flag {
+                    font-size: calc(44px / 3);
+                    padding-top: 0;
+                    padding-bottom: 0;
+                }
+            }
+
+            #bestGuess {
+                margin-top: 4px;
+            }
+
+            #results {
+                display: flex;
+
+                &>* {
+                    margin-right: 200px;
+                }
+            }
+        </style>
+        <script type="text/javascript" src="enList.js"></script>
+        <script type="text/javascript" src="deList.js"></script>
+        <script>
+            let words;
+            let simpleWords;
+            let customStart;
+            let dictStart;
+
+            let correctInput;
+            let containedInput;
+            let missingInput;
+            let suggestionInput;
+            let vowelsCheck;
+            let latinCheck;
+            let yellowsDiv;
+            let countDiv;
+            let bestGuessDiv;
+            let outputDiv;
+            let suggestionDiv;
+
+            let guessableIndices;
+            let guessableWords;
+
+            let correctLetters;
+            let containedLetters;
+            let missingLetters;
+            let forceVowels;
+            let latinChars;
+            let excluded = [];
+            let outputs;
+            let suggested;
+            let results;
+
+            function onLoad() {
+                correctInput = document.getElementById("correct");
+                containedInput = document.getElementById("contained");
+                missingInput = document.getElementById("missing");
+                suggestionInput = document.getElementById("suggest");
+                vowelsCheck = document.getElementById("vowels");
+                latinCheck = document.getElementById("latin");
+                yellowsDiv = document.getElementById("yellowsDiv");
+                countDiv = document.getElementById("countDiv");
+                bestGuessDiv = document.getElementById("bestGuess");
+                outputDiv = document.getElementById("outputDiv");
+                suggestionDiv = document.getElementById("suggestionDiv");
+
+                loadWords();
+
+                correctInput.oninput = () => updateOutput();
+                containedInput.oninput = () => updateOutput();
+                missingInput.oninput = () => updateOutput();
+                vowelsCheck.oninput = () => updateOutput();
+                latinCheck.oninput = () => updateOutput();
+            }
+
+            function loadWords(lang = "EN") {
+                switch (lang) {
+                    default:
+                    case "EN":
+                        words = fullWordList.slice();
+                        customStart = customWordsStart;
+                        dictStart = cswWordsStart;
+                        break;
+                    case "DE":
+                        words = fullWordListDE.slice();
+                        customStart = customWordsStartDE;
+                        dictStart = cswWordsStartDE;
+                        break;
+                }
+                simpleWords = words.map(w => w.toLowerCase().replaceAll("ä", "ae").replaceAll("ö", "oe").replaceAll("ü", "ue").replaceAll("ß", "ss"));
+
+                updateOutput();
+            }
+
+            function updateOutput() {
+                correctLetters = correctInput.value;
+                containedLetters = new Set(containedInput.value);
+                missingLetters = new Set(missingInput.value);
+                forceVowels = vowelsCheck.checked;
+                latinChars = latinCheck.checked;
+
+                yellowsDiv.innerHTML = "";
+                bestGuessDiv.innerHTML = "Guess unresolved...";
+                outputs = 0;
+                outputDiv.innerHTML = "";
+                suggestionDiv.innerHTML = "";
+                results = [];
+
+                for (let l of containedLetters) addYellowButtons(l);
+                for (let i = 0; i < excluded.length - 1; i += 2) {
+                    const b = document.querySelector("p." + excluded[i] + " > button:nth-child(" + (excluded[i + 1] + 1) + ")");
+                    if (b !== null) b.style.backgroundColor = "Yellow";
+                }
+
+                for (let i = 0; i < words.length; i++) addResult(i);
+
+                const oneIn = outputs > 0 ? " | 1 in " + round(words.length / outputs, 10).toLocaleString() : "";
+                countDiv.innerHTML = outputs.toLocaleString() + " / " + words.length.toLocaleString() + oneIn;
+            }
+
+            function addYellowButtons(letter) {
+                let buttons = "";
+                for (let i = 0; i < correctLetters.length; i++) {
+                    buttons += " <button onclick='toggleExcluded(\"" + letter + "\", " + i + ")'>&nbsp;</button>";
+                }
+
+                yellowsDiv.innerHTML += '<p class="' + letter + '">' + letter + buttons + "</p>";
+            }
+
+            function toggleExcluded(letter, pos) {
+                for (let i = 0; i < excluded.length - 1; i += 2) {
+                    if (excluded[i] === letter && excluded[i + 1] === pos) {
+                        excluded.splice(i, 2);
+                        updateOutput();
+                        return;
+                    }
+                }
+
+                excluded.push(letter, pos);
+                updateOutput();
+            }
+
+            function addResult(index) {
+                const txt = word(index, false);
+
+                if (correctLetters.length !== txt.length) return;
+                if (txt.search(correctLetters) === -1) return;
+                for (let contained of containedLetters) if (!txt.includes(contained)) return;
+                for (let missing of missingLetters) if (txt.includes(missing)) return;
+                if (forceVowels && noVowel(txt)) return;
+                for (let i = 0; i < excluded.length - 1; i += 2) if (excluded[i] === txt[excluded[i + 1]]) return;
+
+                results.push(index);
+
+                if (outputs++ > 99) return;
+
+                let placeLabel = index + 1;
+                if (index >= dictStart) placeLabel = "csw2021";
+                else if (index >= customStart) placeLabel = "custom added";
+                placeLabel = " [" + placeLabel + "]";
+
+                outputDiv.innerHTML += "<p>" + outputs + ". " + word(index) + placeLabel + "</p>";
+            }
+
+            function suggest() {
+                suggested = suggestionInput.value;
+
+                outputs = 0;
+                suggestionDiv.innerHTML = "";
+
+                for (let depth = 0; outputs < 10 && depth < correctLetters.length; depth++) {
+                    outer:
+                    for (let i = 0; outputs < 100 && i < words.length; i++) {
+                        const txt = word(i, false);
+                        if (correctLetters.length !== txt.length) continue;
+                        if (forceVowels && noVowel(txt)) continue;
+
+                        let replaced = "";
+                        ls = suggested + '?'.repeat(depth);
+                        for (let l of txt) {
+                            if (ls.search(l) === -1) {
+                                if (ls.search("[?]") === -1) continue outer;
+                                else {
+                                    ls = ls.replace('?', "");
+                                    if (replaced == "") replaced = " +" + l;
+                                    else replaced += l;
+                                }
+                            } else ls = ls.replace(l, "");
+                        }
+
+                        const removed = " -" + suggested.replaceAll(new RegExp("[" + txt + "]", "g"), "");
+                        const hasMissing = txt.search("[" + missingLetters + "]") === -1 ? "&nbsp;" : "*";
+                        suggestionDiv.innerHTML += "<p>" + hasMissing + ++outputs + ". " + word(i) + removed +  replaced + "</p>";
+                    }
+                }
+            }
+
+            function solve() {
+                bestGuessDiv.innerHTML = "Best guess: (solving...)";
+
+                guessableIndices = new Array(words.length).fill().map((a, i) => i).filter(i => word(i, false).length === correctLetters.length && !(forceVowels && noVowel(word(i, false))));
+                guessableWords = guessableIndices.map(index => word(index, false));
+
+                setTimeout(evaluateMatches, 1);
+            }
+
+            function evaluateMatches() {
+                let lastIndex = 0;
+                const possibleInGuessable = results.map((index, i) => lastIndex = guessableIndices.indexOf(index, lastIndex));
+                const possibleWords = results.map(index => word(index, false));
+                const invWordBits = possibleWords.map(w => ~(new Set(w).keys().reduce((bits, l) => bits + alphabetBit(l), 0)));
+                const weights = results.map(index => Math.max(0.01, 1 / (1 + Math.exp((index - 37_000) / 3000))));
+                const possibleWordsWeight = weights.reduce((sum, w) => sum + w);
+                const guessLen = guessableWords.length;
+
+                let expectedInfo = new Array(guessLen).fill(0);
+                let guessMatches = new Array(guessLen);
+                let bestEI = 0;
+                let bestGuessIndex = -1;
+                for (let i = 0; i < guessLen;) {
+                    const guessWord = guessableWords[i];
+
+                    const [patternWeights, matchIndices] = wordleMatches(possibleWords, guessWord, invWordBits, weights);
+                    guessMatches[i] = matchIndices.map(pattern => pattern.map(index => results[index]));
+
+                    for (let patternWeight of patternWeights) {
+                        if (patternWeight === 0) continue;
+
+                        const patternBits = Math.log2(possibleWordsWeight / patternWeight);
+                        expectedInfo[i] += patternWeight * patternBits;
+                    }
+                    expectedInfo[i] /= possibleWordsWeight;
+
+                    if (expectedInfo[i] > bestEI) {
+                        bestGuessIndex = i;
+                        bestEI = expectedInfo[i];
+                    }
+
+                    if (++i % 600 === 0) console.info("Done with " + i + " / " + guessLen + " (" + round(100 * i / guessLen) + "%)");
+                }
+
+                const remainingEntropy = weights.reduce((sum, w) => sum + w * Math.log2(possibleWordsWeight / w), 0) / possibleWordsWeight;
+
+                let bestScore = entropyGuesses(remainingEntropy - bestEI);
+                let expectedScore = expectedInfo.map((info, index) => [index, entropyGuesses(remainingEntropy - info), true]);
+
+                for (let i = 0; i < results.length; i++) {
+                    const guessIndex = possibleInGuessable[i];
+
+                    const score = (1 - weights[i] / possibleWordsWeight) * entropyGuesses(remainingEntropy - expectedInfo[guessIndex]);
+                    expectedScore[guessIndex][1] = score;
+                    expectedScore[guessIndex][2] = false;
+                    if (score < bestScore) {
+                        bestGuessIndex = guessIndex;
+                        bestScore = score;
+                    }
+                }
+
+                expectedScore.sort((a, b) => a[1] - b[1]);
+
+                outputDiv.innerHTML = "";
+
+                let counter = 0;
+                for (let i = 0; counter < 100 && i < expectedScore.length; i++) {
+                    const info = " +" + round(expectedScore[i][1]) + " guess" + (expectedScore[i][1] === 1 ? "" : "es");
+
+                    if (expectedScore[i][2]) {
+                        if (i < 10) outputDiv.innerHTML += "<p>" + word(guessableIndices[expectedScore[i][0]]) + info + "</p>";
+                        continue;
+                    }
+                    const index = guessableIndices[expectedScore[i][0]];
+                    let placeLabel = index + 1;
+                    if (index >= dictStart) placeLabel = "csw2021";
+                    else if (index >= customStart) placeLabel = "custom added";
+                    placeLabel = " [" + placeLabel + "]";
+
+                    outputDiv.innerHTML += "<p>" + ++counter + ". " + word(index) + placeLabel + info + "</p>";
+                }
+
+                const guessBitsInfo = " remaining (" + round(expectedInfo[bestGuessIndex]) + " / " + round(bestEI) + " bit" + (bestEI === 1 ? ") " : "s) ");
+                bestGuessDiv.innerHTML = "Best guess: " + guessableWords[bestGuessIndex] + " with " + round(bestScore) + guessBitsInfo;
+
+                return guessMatches;
+            }
+
+            function wordleMatches(possibleWords, guessWord, txtBits, weights) {
+                const wordLen = guessWord.length;
+                const zeroArray = new Array(wordLen).fill(0);
+                const guessWordBits = [...guessWord].map(l => alphabetBit(l));
+                let guessWordPrior = [0];
+                for (let i = 1; i < wordLen; i++) {
+                    let done = 0;
+                    for (let j = 0; j < i; j++) done += guessWord[j] === guessWord[i];
+                    guessWordPrior[i] = done;
+                }
+
+                let patternWeight = new Array(Math.pow(4, wordLen) - 2).fill(0);
+                let patternWordIndices = patternWeight.slice().map(_ => []);
+                const pWL = possibleWords.length;
+                for (let i = 0; i < pWL; i++) {
+                    const txt = possibleWords[i];
+                    let patternIndex = 0;
+
+                    for (let j = 0; j < wordLen; j++) {
+                        if (guessWordBits[j] & txtBits[i]) continue;
+                        if (guessWord[j] === txt[j]) {
+                            patternIndex += 2 << j * 2;
+                            continue;
+                        }
+
+                        let freeLetters = 0;
+                        for (let k = 0; k < wordLen; k++) {
+                            freeLetters += txt[k] === guessWord[j] && txt[k] !== guessWord[k];
+                        }
+
+                        if (guessWordPrior[j] < freeLetters) patternIndex += 1 << j * 2;
+                    }
+                    patternWeight[patternIndex] += weights[i];
+                    patternWordIndices[patternIndex].push(i);
+                }
+                return [patternWeight, patternWordIndices];
+            }
+
+            function alphabetBit(l) {
+                return 1 << l.charCodeAt() - 'a'.charCodeAt();
+            }
+
+            function reset() {
+                correctInput.value = ".".repeat(correctLetters.length);
+                containedInput.value = "";
+                missingInput.value = "";
+                suggestionInput.value = "";
+                excluded = [];
+                updateOutput();
+            }
+
+            function entropyGuesses(entropy) {
+                return Math.log10(entropy / 4 + 1) * 4 + 1;
+            }
+
+            function noVowel(s) {
+                return s.search(/[aoeiuyäöüßáàâǎãåæóòôǒõøœéèêěëíìîǐĩúùûǔũů]/) < 0;
+            }
+
+            function word(index, display = true) {
+                if (display) return words[index];
+                if (!latinChars) return words[index].toLowerCase();
+                return simpleWords[index];
+            }
+
+            function round(x, n = 1000) {
+                return Math.round(x * n) / n;
+            }
+        </script>
+    </head>
+    <body onload="onLoad()">
+        <button class="static flag" onclick="loadWords()">🇺🇳🇬🇧🇺🇸</button>
+        <button class="static flag" onclick='loadWords("DE")'>🇩🇪🇨🇭🇦🇹</button><br>
+        <label for="correct">&nbsp;&nbsp;Correct letters</label>
+        <input type="text" id="correct" placeholder=".e..o" value="....."><br>
+        <label for="contained">Contained letters</label>
+        <input type="text" id="contained" placeholder="l"><br>
+        <label for="missing">&nbsp;&nbsp;Missing letters</label>
+        <input type="text" id="missing" placeholder="ans"><br>
+        <label for="suggest">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Suggest with</label>
+        <input type="text" id="suggest" placeholder="hg"><br>
+        <label for="vowels">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Force vowels</label>
+        <input type="checkbox" id="vowels" checked>
+        <label for="latin">&nbsp;Latin characters</label>
+        <input type="checkbox" id="latin" checked>
+        <div id="yellowsDiv"></div>
+        <button class="static" onclick="updateOutput()">UPDATE</button>
+        <button class="static" onclick="suggest()">SUGGEST</button>
+        <button class="static" onclick="reset()">RESET</button>
+        <button class="static" onclick="solve()">SOLVE</button><br>
+        <div id="countDiv"></div>
+        <div id="bestGuess"></div>
+        <div id="results">
+            <div id="outputDiv"></div>
+            <div id="suggestionDiv"></div>
+        </div>
+    </body>
+</html>
