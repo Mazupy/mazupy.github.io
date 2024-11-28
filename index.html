@@ -60,6 +60,8 @@
         <script async type="text/javascript" src="enList.js"></script>
         <script async type="text/javascript" src="deList.js"></script>
         <script id="worker" type="javascript/worker">
+            "use strict";
+
             onmessage = function evaluateMatches(event) {
                 function word(index, display = true) {
                     if (display) return words[index];
@@ -81,7 +83,7 @@
                 let guessMatches = new Array(guessLen);
                 let bestEI = 0;
                 let bestGuessIndex = -1;
-                for (let i = 0; i < guessLen;) {
+                for (let i = 0; i < guessLen; i++) {
                     const guessWord = guessableWords[i];
 
                     const [patternWeights, matchIndices] = wordleMatches(possibleWords, guessWord, invWordBits, weights);
@@ -100,7 +102,7 @@
                         bestEI = expectedInfo[i];
                     }
 
-                    if (++i % 600 === 0) console.info("Done with " + i + " / " + guessLen + " (" + round(100 * i / guessLen) + "%)");
+                    postMessage(i);
                 }
 
                 const remainingEntropy = weights.reduce((sum, w) => sum + w * Math.log2(possibleWordsWeight / w), 0) / possibleWordsWeight;
@@ -198,6 +200,8 @@
             }
         </script>
         <script>
+            "use strict";
+
             let words;
             let simpleWords;
             let customStart;
@@ -379,6 +383,11 @@
                 solveWorker.postMessage([words, simpleWords, customStart, dictStart, guessableIndices, latinChars, results]);
 
                 solveWorker.onmessage = event => {
+                    if (typeof(event.data) === "number") {
+                        bestGuessDiv.innerHTML = "Solve progress: " + event.data + " / " + guessableIndices.length + " (" + Math.round(100 * event.data / guessableIndices.length) + "%)";
+                        return;
+                    }
+
                     bestGuessDiv.innerHTML = event.data[0];
                     outputDiv.innerHTML = event.data[1];
                 };
