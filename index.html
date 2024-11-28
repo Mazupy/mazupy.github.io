@@ -131,9 +131,9 @@
             }
 
             function updateOutput() {
-                correctLetters = correctInput.value;
-                containedLetters = new Set(containedInput.value);
-                missingLetters = new Set(missingInput.value);
+                correctLetters = correctInput.value.toLowerCase();
+                containedLetters = new Set(containedInput.value.toLowerCase());
+                missingLetters = new Set(missingInput.value.toLowerCase());
                 forceVowels = vowelsCheck.checked;
                 latinChars = latinCheck.checked;
 
@@ -201,7 +201,7 @@
             }
 
             function suggest() {
-                suggested = suggestionInput.value;
+                suggested = suggestionInput.value.toLowerCase();
 
                 outputs = 0;
                 suggestionDiv.innerHTML = "";
