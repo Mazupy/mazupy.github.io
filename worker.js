@@ -18,14 +18,12 @@ onmessage = function evaluateMatches(event) {
     const guessLen = guessableWords.length;
 
     let expectedInfo = new Array(guessLen).fill(0);
-    let guessMatches = new Array(guessLen);
     let bestEI = 0;
     let bestGuessIndex = -1;
     for (let i = 0; i < guessLen; i++) {
         const guessWord = guessableWords[i];
 
-        const [patternWeights, matchIndices] = wordleMatches(possibleWords, guessWord, invWordBits, weights);
-        guessMatches[i] = matchIndices.map(pattern => pattern.map(index => results[index]));
+        const patternWeights = wordleMatches(possibleWords, guessWord, invWordBits, weights);
 
         for (let patternWeight of patternWeights) {
             if (patternWeight === 0) continue;
@@ -99,7 +97,6 @@ function wordleMatches(possibleWords, guessWord, txtBits, weights) {
     }
 
     let patternWeight = new Array(Math.pow(4, wordLen) - 2).fill(0);
-    let patternWordIndices = patternWeight.slice().map(_ => []);
     const pWL = possibleWords.length;
     for (let i = 0; i < pWL; i++) {
         const txt = possibleWords[i];
@@ -120,9 +117,8 @@ function wordleMatches(possibleWords, guessWord, txtBits, weights) {
             if (guessWordPrior[j] < freeLetters) patternIndex += 1 << j * 2;
         }
         patternWeight[patternIndex] += weights[i];
-        patternWordIndices[patternIndex].push(i);
     }
-    return [patternWeight, patternWordIndices];
+    return patternWeight;
 }
 
 function alphabetBit(l) {
