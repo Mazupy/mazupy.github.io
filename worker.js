@@ -8,7 +8,16 @@ onmessage = function evaluateMatches(event) {
     }
     const [words, simpleWords, customStart, dictStart, guessableIndices, latinChars, results] = event.data;
     const guessableWords = guessableIndices.map(index => word(index, false));
-
+    const guessableWordsBits = guessableWords.map(w => [...w].map(l => alphabetBit(l)));
+    const guessableWordsPrior = guessableWords.map(w => {
+        let prior = [0];
+        for (let i = 1; i < w.length; i++) {
+            let done = 0;
+            for (let j = 0; j < i; j++) done += w[j] === w[i];
+            prior[i] = done;
+        }
+        return prior;
+    });
     let lastIndex = 0;
     const possibleInGuessable = results.map((index, i) => lastIndex = guessableIndices.indexOf(index, lastIndex));
     const possibleWords = results.map(index => word(index, false));
@@ -19,11 +28,8 @@ onmessage = function evaluateMatches(event) {
 
     let expectedInfo = new Array(guessLen).fill(0);
     let bestEI = 0;
-    let bestGuessIndex = -1;
     for (let i = 0; i < guessLen; i++) {
-        const guessWord = guessableWords[i];
-
-        const patternWeights = wordleMatches(possibleWords, guessWord, invWordBits, weights);
+        const patternWeights = wordleMatches(possibleWords, guessableWords[i], guessableWordsBits[i], guessableWordsPrior[i], invWordBits, weights);
 
         for (let patternWeight of patternWeights) {
             if (patternWeight === 0) continue;
@@ -33,10 +39,7 @@ onmessage = function evaluateMatches(event) {
         }
         expectedInfo[i] /= possibleWordsWeight;
 
-        if (expectedInfo[i] > bestEI) {
-            bestGuessIndex = i;
-            bestEI = expectedInfo[i];
-        }
+        bestEI = Math.max(bestEI, expectedInfo[i]);
 
         postMessage(i);
     }
@@ -52,13 +55,11 @@ onmessage = function evaluateMatches(event) {
         const score = (1 - weights[i] / possibleWordsWeight) * entropyGuesses(remainingEntropy - expectedInfo[guessIndex]);
         expectedScore[guessIndex][1] = score;
         expectedScore[guessIndex][2] = false;
-        if (score < bestScore) {
-            bestGuessIndex = guessIndex;
-            bestScore = score;
-        }
+        bestScore = Math.min(bestScore, score);
     }
 
     expectedScore.sort((a, b) => a[1] - b[1]);
+    const bestGuessIndex = expectedScore[0][0];
 
     let outputHTML = "";
 
@@ -85,18 +86,15 @@ onmessage = function evaluateMatches(event) {
     postMessage([bestGuessMsg, outputHTML]);
 }
 
-function wordleMatches(possibleWords, guessWord, txtBits, weights) {
+function wordleMatches(possibleWords, guessWord, guessWordBits, guessWordPrior, txtBits, weights) {
     const wordLen = guessWord.length;
-    const zeroArray = new Array(wordLen).fill(0);
-    const guessWordBits = [...guessWord].map(l => alphabetBit(l));
-    let guessWordPrior = [0];
-    for (let i = 1; i < wordLen; i++) {
-        let done = 0;
-        for (let j = 0; j < i; j++) done += guessWord[j] === guessWord[i];
-        guessWordPrior[i] = done;
+
+    if (wordLen > 14) {
+        console.error("Cannot handle very long words yet (takes many hours anyways)");
+        return [];
     }
 
-    let patternWeight = new Array(Math.pow(4, wordLen) - 2).fill(0);
+    let patternWeight = new Array(((4 << wordLen * 2 - 1) + 1) / 3).fill(0);
     const pWL = possibleWords.length;
     for (let i = 0; i < pWL; i++) {
         const txt = possibleWords[i];
