@@ -216,7 +216,7 @@
                         if (forceVowels && noVowel(txt)) continue;
 
                         let replaced = "";
-                        ls = suggested + '?'.repeat(depth);
+                        let ls = suggested + '?'.repeat(depth);
                         for (let l of txt) {
                             if (ls.search(l) === -1) {
                                 if (ls.search("[?]") === -1) continue outer;
