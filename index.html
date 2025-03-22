@@ -100,7 +100,7 @@
                 let minTables = 0;
                 for (let remaining = p; remaining > 0; minTables++) {
                     if (minTables >= tableSizes.length) {
-                        outputDiv.innerHTML = "[WARNING] Not enough space for all players!<br>";
+                        outputDiv.innerHTML = "[WARNING] Not enough space for all players!<br><br>";
                         return;
                     }
                     remaining -= tableSizes[minTables];
