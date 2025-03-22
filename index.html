@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="icon" href="data:,">
+        <title>Table distribution</title>
+        <style>
+            * {
+                font-family: monospace;
+                font-size: 2vmax;
+                vertical-align: middle;
+                margin-bottom: 0.3vmax;
+            }
+
+            body {
+                background-color: #1c1b22;
+                color: lightgray;
+            }
+
+            input[type=text] {
+                background-color: inherit;
+                color: inherit;
+                width: 4vmax;
+            }
+
+            input[type=checkbox] {
+                transform: scale(3);
+            }
+
+            button {
+                border-radius: 1vmax;
+                border-color: transparent;
+                border-width: 0.3vmax;
+                box-shadow: 0 0 0 0.1vmax #8f8f9d;
+                background-color: #29282e;
+                color: inherit;
+                padding: 0.5vmax;
+            }
+
+            .square {
+                padding: 6px;
+                width: 3vmax;
+                height: 3vmax;
+            }
+        </style>
+        <script>
+            "use strict";
+
+            let outputDiv;
+            let playerInput;
+            let maxCheckbox;
+            let maxInput;
+            let tableDiv;
+
+            let tableAmount = 0;
+
+            function onLoad() {
+                outputDiv = document.getElementById("outputDiv");
+                playerInput = document.getElementById("players");
+                maxCheckbox = document.getElementById("maxtable");
+                maxInput = document.getElementById("maxplayers");
+                tableDiv = document.getElementById("allTables");
+
+                maxInput.oninput = () => maxChange();
+
+                addTable();
+                addTable();
+                addTable();
+            }
+
+            function getFinalValue(input) {
+                const iN = Math.round(Number(input.value));
+                return iN < 2 ? Number(input.placeholder) : iN;
+            }
+
+            function randomize(_, i, a) {
+                const ii = Math.floor(Math.random() * (a.length - i)) + i;
+                const t = a[i];
+                a[i] = a[ii];
+                a[ii] = t;
+            }
+
+            function getTables() {
+                let ts = [];
+                for (let t of document.querySelectorAll(".tableDiv>input")) {
+                    const iN = Math.round(Number(t.value));
+                    ts.push(iN < 2 ? Number(t.placeholder) : iN);
+                }
+                return ts;
+            }
+
+            function distribute() {
+                maxCheckbox.checked;
+
+                const p = getFinalValue(playerInput);
+                const pOrder = new Array(p).fill().map((_, i) => i)
+                      pOrder.forEach(randomize);
+                const tableSizes = getTables();
+                const maxTables = Math.floor(p / 2);
+                let minTables = 0;
+                for (let remaining = p; remaining > 0; minTables++) {
+                    if (minTables >= tableSizes.length) {
+                        outputDiv.innerHTML = "[WARNING] Not enough space for all players!<br>";
+                        return;
+                    }
+                    remaining -= tableSizes[minTables];
+                }
+                let pSeat = new Array(p);
+                let iSeat = 0, iTable = 0;
+                for (let i = 0; i < p; i++) {
+                    do {
+                        if (iTable >= minTables) {
+                            iTable = 0;
+                            iSeat++;
+                        }
+                    } while (iSeat >= tableSizes[iTable++]);
+                    pSeat[pOrder[i]] = iTable + " - " + (iSeat + 1);
+                }
+
+                outputDiv.innerHTML = "";
+                const pW = Math.floor(Math.log10(p));
+                for (let i = 0; i < p;) {
+                    const n = "&nbsp;".repeat(pW - Math.floor(Math.log10(++i))) + i;
+                    outputDiv.innerHTML += "Player " + n + ": " + pSeat[i - 1] + "<br>";
+                }
+
+                outputDiv.innerHTML += "<br>";
+            }
+
+            function incByID(id) {
+                const input = document.getElementById(id);
+                const iN = Math.round(Number(input.value));
+                if (iN < 2 || isNaN(iN)) {
+                    input.placeholder = Number(input.placeholder) + 1;
+                    if (input.value !== "") input.value = input.placeholder;
+                } else {
+                    input.value = iN + 1;
+                }
+
+                if (id === 'maxplayers') maxChange();
+            }
+
+            function decByID(id) {
+                const input = document.getElementById(id);
+                const iN = Math.round(Number(input.value));
+                if (iN < 2 || isNaN(iN)) {
+                    input.placeholder = Math.max(2, Number(input.placeholder) - 1);
+                    if (input.value !== "") input.value = input.placeholder;
+                } else {
+                    input.value = Math.max(2, iN - 1);
+                }
+
+                if (id === 'maxplayers') maxChange();
+            }
+
+            function getMax() {
+                return maxCheckbox.checked ? getFinalValue(maxInput) : 9;
+            }
+
+            function maxChange() {
+                if (!maxCheckbox.checked) return;
+
+                const m = getMax();
+                for (let t of document.querySelectorAll(".tableDiv>input")) {
+                    if (Math.abs(Number(t.placeholder) - m) <= 1) t.placeholder = m;
+                }
+            }
+
+            function addTable() {
+                tableDiv.innerHTML += `<div class="tableDiv"
+                    <label for="table${tableAmount}">Table ${tableAmount}: </label>
+                    <button class="square" onclick="decByID('table${tableAmount}')">-</button>
+                    <input type="text" id="table${tableAmount}" placeholder="${getMax()}">
+                    <button class="square" onclick="incByID('table${tableAmount}')">+</button>
+                </div>`
+
+                tableAmount++;
+            }
+
+            function removeTable() {
+                if (tableAmount < 2) return;
+
+                document.querySelector(".tableDiv:last-child").remove();
+
+                tableAmount--;
+            }
+        </script>
+    </head>
+    <body onload="onLoad()">
+        <button style="float: right" onclick="distribute()">Distribute</button>
+        <div id="outputDiv"></div>
+        <button class="square" onclick="decByID('players')">-</button>
+        <input type="text" id="players" placeholder="20">
+        <button class="square" onclick="incByID('players')">+</button><br>
+        <label for="maxtable">Max table</label>
+        <input type="checkbox" id="maxtable" checked><br>
+        <label for="maxplayers">Max: </label>
+        <button class="square" onclick="decByID('maxplayers')">-</button>
+        <input type="text" id="maxplayers" placeholder="9">
+        <button class="square" onclick="incByID('maxplayers')">+</button><br>
+        <div id="allTables"></div>
+        <button class="square" onclick="removeTable()">-</button>
+        <button class="square" onclick="addTable()">+</button>
+    </body>
+</html>
+
