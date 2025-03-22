@@ -90,13 +90,10 @@
             }
 
             function distribute() {
-                maxCheckbox.checked;
-
                 const p = getFinalValue(playerInput);
                 const pOrder = new Array(p).fill().map((_, i) => i)
                       pOrder.forEach(randomize);
                 const tableSizes = getTables();
-                const maxTables = Math.floor(p / 2);
                 let minTables = 0;
                 for (let remaining = p; remaining > 0; minTables++) {
                     if (minTables >= tableSizes.length) {
@@ -105,6 +102,10 @@
                     }
                     remaining -= tableSizes[minTables];
                 }
+
+                if (Math.floor(p / 2) < minTables) outputDiv.innerHTML = "[WARNING] Lone player! Reorder tables or deal with it.<br><br>";
+                else outputDiv.innerHTML = "";
+
                 let pSeat = new Array(p);
                 let iSeat = 0, iTable = 0;
                 for (let i = 0; i < p; i++) {
@@ -117,7 +118,6 @@
                     pSeat[pOrder[i]] = iTable + " - " + (iSeat + 1);
                 }
 
-                outputDiv.innerHTML = "";
                 const pW = Math.floor(Math.log10(p));
                 for (let i = 0; i < p;) {
                     const n = "&nbsp;".repeat(pW - Math.floor(Math.log10(++i))) + i;
