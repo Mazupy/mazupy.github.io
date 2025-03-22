@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <link rel="icon" href="data:,">
-        <title>Table distribution</title>
+        <title>Tischverteilung</title>
         <style>
             * {
                 font-family: monospace;
@@ -97,13 +97,13 @@
                 let minTables = 0;
                 for (let remaining = p; remaining > 0; minTables++) {
                     if (minTables >= tableSizes.length) {
-                        outputDiv.innerHTML = "[WARNING] Not enough space for all players!<br><br>";
+                        outputDiv.innerHTML = "[WARNUNG] Nicht genug platz für alle Spieler!<br><br>";
                         return;
                     }
                     remaining -= tableSizes[minTables];
                 }
 
-                if (Math.floor(p / 2) < minTables) outputDiv.innerHTML = "[WARNING] Lone player! Reorder tables or deal with it.<br><br>";
+                if (Math.floor(p / 2) < minTables) outputDiv.innerHTML = "[WARNUNG] Einzelner Spieler! Tische neu anordnen oder so annehmen.<br><br>";
                 else outputDiv.innerHTML = "";
 
                 let pSeat = new Array(p);
@@ -121,7 +121,7 @@
                 const pW = Math.floor(Math.log10(p));
                 for (let i = 0; i < p;) {
                     const n = "&nbsp;".repeat(pW - Math.floor(Math.log10(++i))) + i;
-                    outputDiv.innerHTML += "Player " + n + ": " + pSeat[i - 1] + "<br>";
+                    outputDiv.innerHTML += "Spieler " + n + ": " + pSeat[i - 1] + "<br>";
                 }
 
                 outputDiv.innerHTML += "<br>";
@@ -168,7 +168,7 @@
 
             function addTable() {
                 tableDiv.innerHTML += `<div class="tableDiv"
-                    <label for="table${tableAmount}">Table ${tableAmount}: </label>
+                    <label for="table${tableAmount}">Tisch ${tableAmount + 1}: </label>
                     <button class="square" onclick="decByID('table${tableAmount}')">-</button>
                     <input type="text" id="table${tableAmount}" placeholder="${getMax()}">
                     <button class="square" onclick="incByID('table${tableAmount}')">+</button>
@@ -187,14 +187,15 @@
         </script>
     </head>
     <body onload="onLoad()">
-        <button style="float: right" onclick="distribute()">Distribute</button>
+        <button style="float: right" onclick="distribute()">Verteilen</button>
         <div id="outputDiv"></div>
+        <label for="players">Spieler: </label>
         <button class="square" onclick="decByID('players')">-</button>
         <input type="text" id="players" placeholder="20">
         <button class="square" onclick="incByID('players')">+</button><br>
-        <label for="maxtable">Max table</label>
+        <label for="maxtable">Maximaltisch</label>
         <input type="checkbox" id="maxtable" checked><br>
-        <label for="maxplayers">Max: </label>
+        <label for="maxplayers">Maximum: </label>
         <button class="square" onclick="decByID('maxplayers')">-</button>
         <input type="text" id="maxplayers" placeholder="9">
         <button class="square" onclick="incByID('maxplayers')">+</button><br>
